@@ -1,0 +1,1052 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SAP RAP – Business Object con Composición 3 Niveles</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:        #0a0e1a;
+    --surface:   #111827;
+    --surface2:  #1a2236;
+    --border:    #1e2d45;
+    --accent:    #0af0c8;
+    --accent2:   #3b82f6;
+    --accent3:   #a78bfa;
+    --warn:      #f59e0b;
+    --text:      #e2e8f0;
+    --muted:     #64748b;
+    --code-bg:   #0d1526;
+    --header-h:  56px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Syne', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* ── SIDEBAR ── */
+  #sidebar {
+    width: 270px;
+    min-width: 270px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    z-index: 10;
+  }
+
+  .sidebar-logo {
+    padding: 20px 22px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .sidebar-logo .tag {
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--accent);
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+  .sidebar-logo h1 {
+    font-size: 17px;
+    font-weight: 800;
+    margin-top: 4px;
+    line-height: 1.2;
+  }
+  .sidebar-logo span { color: var(--accent2); }
+
+  .nav-section {
+    padding: 14px 14px 4px;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 18px;
+    cursor: pointer;
+    border-radius: 6px;
+    margin: 1px 8px;
+    font-size: 13px;
+    color: var(--muted);
+    transition: all .18s;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 400;
+    border: 1px solid transparent;
+  }
+  .nav-item:hover { color: var(--text); background: var(--surface2); }
+  .nav-item.active {
+    color: var(--accent);
+    background: rgba(10,240,200,.07);
+    border-color: rgba(10,240,200,.18);
+  }
+  .nav-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--muted);
+    flex-shrink: 0;
+    transition: background .18s;
+  }
+  .nav-item.active .nav-dot { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+
+  .level-badge {
+    margin-left: auto;
+    font-size: 9px;
+    padding: 2px 7px;
+    border-radius: 20px;
+    font-weight: 600;
+    letter-spacing: .5px;
+  }
+  .l1 { background: rgba(10,240,200,.12); color: var(--accent); }
+  .l2 { background: rgba(59,130,246,.12); color: var(--accent2); }
+  .l3 { background: rgba(167,139,250,.12); color: var(--accent3); }
+
+  /* ── MAIN ── */
+  #main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  header {
+    height: var(--header-h);
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 28px;
+    gap: 16px;
+    flex-shrink: 0;
+  }
+  .breadcrumb {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .breadcrumb b { color: var(--accent); }
+  .header-pills { margin-left: auto; display: flex; gap: 8px; }
+  .pill {
+    font-size: 11px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-weight: 600;
+    letter-spacing: .5px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .pill-green  { background: rgba(10,240,200,.12); color: var(--accent);  border: 1px solid rgba(10,240,200,.25); }
+  .pill-blue   { background: rgba(59,130,246,.12);  color: var(--accent2); border: 1px solid rgba(59,130,246,.25); }
+  .pill-purple { background: rgba(167,139,250,.12); color: var(--accent3); border: 1px solid rgba(167,139,250,.25); }
+
+  #content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 32px 36px;
+  }
+
+  /* ── SECTIONS ── */
+  .section { display: none; }
+  .section.visible { display: block; animation: fadeUp .3s ease; }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .section-title {
+    font-size: 22px;
+    font-weight: 800;
+    margin-bottom: 6px;
+  }
+  .section-title span { color: var(--accent); }
+  .section-desc {
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 28px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* ── COMPOSITION TREE ── */
+  .tree-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 26px 28px;
+    margin-bottom: 28px;
+  }
+  .tree-box h3 {
+    font-size: 12px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 18px;
+  }
+  .tree-node {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    margin-bottom: 4px;
+    border: 1px solid transparent;
+    cursor: default;
+    transition: all .15s;
+  }
+  .tree-node:hover { border-color: var(--border); background: var(--surface2); }
+  .tree-icon { font-size: 16px; }
+  .tree-name { font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 600; }
+  .tree-desc { font-size: 12px; color: var(--muted); margin-left: auto; }
+  .tree-connector { padding-left: 28px; border-left: 2px dashed var(--border); margin-left: 20px; }
+
+  .n1 { border-color: rgba(10,240,200,.2);  background: rgba(10,240,200,.04); }
+  .n1 .tree-name { color: var(--accent); }
+  .n2 { border-color: rgba(59,130,246,.2);  background: rgba(59,130,246,.04); }
+  .n2 .tree-name { color: var(--accent2); }
+  .n3 { border-color: rgba(167,139,250,.2); background: rgba(167,139,250,.04); }
+  .n3 .tree-name { color: var(--accent3); }
+
+  /* ── TABLE ── */
+  .info-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    font-family: 'JetBrains Mono', monospace;
+    margin-bottom: 28px;
+  }
+  .info-table th {
+    text-align: left;
+    padding: 10px 16px;
+    background: var(--surface2);
+    color: var(--muted);
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+  }
+  .info-table td {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+  }
+  .info-table tr:last-child td { border-bottom: none; }
+  .info-table tr:hover td { background: var(--surface2); }
+  .check { color: var(--accent); }
+  .cross { color: var(--muted); }
+  .code-inline {
+    background: var(--code-bg);
+    color: var(--accent2);
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 12px;
+  }
+
+  /* ── CODE BLOCK ── */
+  .code-header {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-bottom: none;
+    border-radius: 10px 10px 0 0;
+    padding: 10px 18px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .code-lang {
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .code-file {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+    margin-left: auto;
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 0 0 10px 10px;
+    padding: 20px 22px;
+    overflow-x: auto;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px;
+    line-height: 1.75;
+    margin-bottom: 24px;
+    white-space: pre;
+  }
+
+  /* syntax coloring */
+  .kw  { color: #7dd3fc; }   /* keywords */
+  .ty  { color: #86efac; }   /* types */
+  .cm  { color: #475569; font-style: italic; }  /* comments */
+  .st  { color: #fca5a5; }   /* strings */
+  .an  { color: var(--accent3); }  /* annotations */
+  .fd  { color: var(--warn); }    /* fields */
+  .op  { color: var(--accent); }  /* operators/specials */
+
+  /* ── GRID CARDS ── */
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 20px;
+    transition: border-color .18s;
+  }
+  .card:hover { border-color: var(--accent2); }
+  .card-icon { font-size: 20px; margin-bottom: 10px; }
+  .card-title { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+  .card-body { font-size: 12px; color: var(--muted); line-height: 1.6; font-family: 'JetBrains Mono', monospace; }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+
+  /* ── OVERVIEW DIAGRAM ── */
+  .diagram {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px;
+    margin-bottom: 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+  .diag-row { display: flex; align-items: stretch; gap: 0; }
+  .diag-box {
+    flex: 1;
+    border: 1px solid;
+    border-radius: 8px;
+    padding: 14px 18px;
+    position: relative;
+  }
+  .diag-box h4 { font-size: 12px; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; opacity: .7; }
+  .diag-box ul { list-style: none; }
+  .diag-box ul li { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text); padding: 2px 0; }
+  .diag-box ul li::before { content: '→ '; color: var(--muted); }
+  .diag-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 14px;
+    color: var(--muted);
+    font-size: 20px;
+  }
+  .db-box  { border-color: rgba(251,191,36,.3);  background: rgba(251,191,36,.04); }
+  .db-box h4 { color: var(--warn); }
+  .cds-box { border-color: rgba(10,240,200,.3);  background: rgba(10,240,200,.04); }
+  .cds-box h4 { color: var(--accent); }
+  .beh-box { border-color: rgba(59,130,246,.3);  background: rgba(59,130,246,.04); }
+  .beh-box h4 { color: var(--accent2); }
+  .svc-box { border-color: rgba(167,139,250,.3); background: rgba(167,139,250,.04); }
+  .svc-box h4 { color: var(--accent3); }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav id="sidebar">
+  <div class="sidebar-logo">
+    <div class="tag">SAP RAP</div>
+    <h1>Business Object<br><span>3-Level Composition</span></h1>
+  </div>
+
+  <div class="nav-section">Visión General</div>
+  <div class="nav-item active" onclick="show('overview', this)">
+    <span class="nav-dot"></span>Arquitectura
+  </div>
+
+  <div class="nav-section">Base de Datos</div>
+  <div class="nav-item" onclick="show('db-header', this)">
+    <span class="nav-dot"></span>ZSALES_ORDER
+    <span class="level-badge l1">L1</span>
+  </div>
+  <div class="nav-item" onclick="show('db-item', this)">
+    <span class="nav-dot"></span>ZSALES_ORDER_ITEM
+    <span class="level-badge l2">L2</span>
+  </div>
+  <div class="nav-item" onclick="show('db-schl', this)">
+    <span class="nav-dot"></span>ZSALES_ORDER_SCHL
+    <span class="level-badge l3">L3</span>
+  </div>
+
+  <div class="nav-section">CDS Interface Views</div>
+  <div class="nav-item" onclick="show('cds-i-header', this)">
+    <span class="nav-dot"></span>ZI_SALESORDER
+    <span class="level-badge l1">L1</span>
+  </div>
+  <div class="nav-item" onclick="show('cds-i-item', this)">
+    <span class="nav-dot"></span>ZI_SALESORDER_ITEM
+    <span class="level-badge l2">L2</span>
+  </div>
+  <div class="nav-item" onclick="show('cds-i-schl', this)">
+    <span class="nav-dot"></span>ZI_SALESORDER_SCHL
+    <span class="level-badge l3">L3</span>
+  </div>
+
+  <div class="nav-section">CDS Consumption Views</div>
+  <div class="nav-item" onclick="show('cds-c-header', this)">
+    <span class="nav-dot"></span>ZC_SALESORDER
+    <span class="level-badge l1">L1</span>
+  </div>
+  <div class="nav-item" onclick="show('cds-c-item', this)">
+    <span class="nav-dot"></span>ZC_SALESORDER_ITEM
+    <span class="level-badge l2">L2</span>
+  </div>
+  <div class="nav-item" onclick="show('cds-c-schl', this)">
+    <span class="nav-dot"></span>ZC_SALESORDER_SCHL
+    <span class="level-badge l3">L3</span>
+  </div>
+
+  <div class="nav-section">Behavior</div>
+  <div class="nav-item" onclick="show('bdef-base', this)">
+    <span class="nav-dot"></span>ZI_SALESORDER (BDEF)
+  </div>
+  <div class="nav-item" onclick="show('bdef-proj', this)">
+    <span class="nav-dot"></span>ZC_SALESORDER (BDEF)
+  </div>
+  <div class="nav-item" onclick="show('bpool', this)">
+    <span class="nav-dot"></span>ZBP_I_SALESORDER
+  </div>
+
+  <div class="nav-section">Servicio</div>
+  <div class="nav-item" onclick="show('service', this)">
+    <span class="nav-dot"></span>Service Definition
+  </div>
+</nav>
+
+<!-- MAIN -->
+<div id="main">
+  <header>
+    <div class="breadcrumb">
+      SAP RAP › <b id="bc-text">Arquitectura</b>
+    </div>
+    <div class="header-pills">
+      <span class="pill pill-green">Managed BO</span>
+      <span class="pill pill-blue">OData V4</span>
+      <span class="pill pill-purple">3 Niveles</span>
+    </div>
+  </header>
+
+  <div id="content">
+
+    <!-- ══ OVERVIEW ══ -->
+    <div id="s-overview" class="section visible">
+      <div class="section-title">Arquitectura del <span>Business Object</span></div>
+      <div class="section-desc">// Caso de uso: Orden de Venta con Ítem y Línea de Entrega</div>
+
+      <div class="tree-box">
+        <h3>Árbol de Composición</h3>
+        <div class="tree-node n1">
+          <span class="tree-icon">📦</span>
+          <span class="tree-name">SalesOrder</span>
+          <span class="tree-desc">Root Entity · ZSALES_ORDER</span>
+        </div>
+        <div class="tree-connector">
+          <div class="tree-node n2">
+            <span class="tree-icon">📄</span>
+            <span class="tree-name">SalesOrderItem</span>
+            <span class="tree-desc">Child [0..*] · ZSALES_ORDER_ITEM</span>
+          </div>
+          <div class="tree-connector">
+            <div class="tree-node n3">
+              <span class="tree-icon">📅</span>
+              <span class="tree-name">ScheduleLine</span>
+              <span class="tree-desc">Grandchild [0..*] · ZSALES_ORDER_SCHL</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="diagram">
+        <div class="diag-row">
+          <div class="diag-box db-box">
+            <h4>🗄️ Database Tables</h4>
+            <ul>
+              <li>ZSALES_ORDER</li>
+              <li>ZSALES_ORDER_ITEM</li>
+              <li>ZSALES_ORDER_SCHL</li>
+            </ul>
+          </div>
+          <div class="diag-arrow">→</div>
+          <div class="diag-box cds-box">
+            <h4>👁️ CDS Interface Views</h4>
+            <ul>
+              <li>ZI_SALESORDER</li>
+              <li>ZI_SALESORDER_ITEM</li>
+              <li>ZI_SALESORDER_SCHL</li>
+            </ul>
+          </div>
+          <div class="diag-arrow">→</div>
+          <div class="diag-box beh-box">
+            <h4>⚙️ Consumption + Behavior</h4>
+            <ul>
+              <li>ZC_SALESORDER</li>
+              <li>ZI/ZC_SALESORDER (BDEF)</li>
+              <li>ZBP_I_SALESORDER</li>
+            </ul>
+          </div>
+          <div class="diag-arrow">→</div>
+          <div class="diag-box svc-box">
+            <h4>🌐 Service</h4>
+            <ul>
+              <li>ZUI_SALESORDER_O4</li>
+              <li>Service Binding</li>
+              <li>OData V4 Endpoint</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-title" style="font-size:16px; margin-bottom:14px;">Puntos Clave por Nivel</div>
+      <table class="info-table">
+        <thead>
+          <tr>
+            <th>Concepto</th>
+            <th>SalesOrder (L1)</th>
+            <th>SalesOrderItem (L2)</th>
+            <th>ScheduleLine (L3)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>root</td>
+            <td class="check">✔ define root view entity</td>
+            <td class="cross">—</td>
+            <td class="cross">—</td>
+          </tr>
+          <tr>
+            <td>lock</td>
+            <td><span class="code-inline">master</span></td>
+            <td><span class="code-inline">dependent by _Order</span></td>
+            <td><span class="code-inline">dependent by _Order</span></td>
+          </tr>
+          <tr>
+            <td>authorization</td>
+            <td><span class="code-inline">master (instance)</span></td>
+            <td><span class="code-inline">dependent by _Order</span></td>
+            <td><span class="code-inline">dependent by _Order</span></td>
+          </tr>
+          <tr>
+            <td>composition</td>
+            <td><span class="code-inline">[0..*] of Item</span></td>
+            <td><span class="code-inline">[0..*] of SchlLine</span></td>
+            <td class="cross">—</td>
+          </tr>
+          <tr>
+            <td>association to parent</td>
+            <td class="cross">—</td>
+            <td><span class="code-inline">ZI_SALESORDER</span></td>
+            <td><span class="code-inline">ZI_SALESORDER_ITEM</span></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="card-grid">
+        <div class="card">
+          <div class="card-icon">🔒</div>
+          <div class="card-title">Lock Propagation</div>
+          <div class="card-body">El lock del Root se propaga automáticamente hacia los nodos hijo. Los nodos L2 y L3 usan <code>lock dependent</code>.</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">🔑</div>
+          <div class="card-title">UUID como clave</div>
+          <div class="card-body">Se usan <code>sysuuid_x16</code> para las claves primarias y FK, garantizando unicidad sin necesidad de rangos de numeración.</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">⚡</div>
+          <div class="card-title">Managed Implementation</div>
+          <div class="card-body">El framework gestiona automáticamente CRUD y la numeración UUID. Solo se codifica lógica de negocio específica.</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">🔁</div>
+          <div class="card-title">ETag para optimistic lock</div>
+          <div class="card-body">Cada tabla incluye <code>local_last_changed_at</code> como campo ETag para control de concurrencia optimista.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ DB HEADER ══ -->
+    <div id="s-db-header" class="section">
+      <div class="section-title"><span>ZSALES_ORDER</span> — Tabla Header</div>
+      <div class="section-desc">// Nivel 1 · Root Entity · Database Table (DDIC)</div>
+      <div class="code-header">
+        <span class="code-lang">ABAP CDS</span>
+        <span class="code-file">ZSALES_ORDER.dbtab</span>
+      </div>
+<pre><span class="an">@EndUserText.label:</span> <span class="st">'Sales Order Header'</span>
+<span class="kw">define table</span> <span class="fd">zsales_order</span> {
+  <span class="kw">key</span> <span class="fd">client</span>              : <span class="ty">abap.clnt</span> <span class="op">not null</span>;
+  <span class="kw">key</span> <span class="fd">order_uuid</span>          : <span class="ty">sysuuid_x16</span> <span class="op">not null</span>;
+      <span class="fd">order_id</span>            : <span class="ty">abap.char(10)</span>;
+      <span class="fd">customer</span>            : <span class="ty">abap.char(10)</span>;
+      <span class="fd">order_date</span>          : <span class="ty">abap.dats</span>;
+      <span class="fd">status</span>              : <span class="ty">abap.char(2)</span>;
+      <span class="fd">created_by</span>          : <span class="ty">abp_creation_user</span>;
+      <span class="fd">created_at</span>          : <span class="ty">abp_creation_tstmpl</span>;
+      <span class="fd">last_changed_by</span>     : <span class="ty">abp_lastchange_user</span>;
+      <span class="fd">last_changed_at</span>     : <span class="ty">abp_lastchange_tstmpl</span>;
+      <span class="fd">local_last_changed_at</span> : <span class="ty">abp_locinst_lastchange_tstmpl</span>;
+}</pre>
+    </div>
+
+    <!-- ══ DB ITEM ══ -->
+    <div id="s-db-item" class="section">
+      <div class="section-title"><span>ZSALES_ORDER_ITEM</span> — Tabla Ítem</div>
+      <div class="section-desc">// Nivel 2 · Child Entity · FK → order_uuid</div>
+      <div class="code-header">
+        <span class="code-lang">ABAP CDS</span>
+        <span class="code-file">ZSALES_ORDER_ITEM.dbtab</span>
+      </div>
+<pre><span class="an">@EndUserText.label:</span> <span class="st">'Sales Order Item'</span>
+<span class="kw">define table</span> <span class="fd">zsales_order_item</span> {
+  <span class="kw">key</span> <span class="fd">client</span>    : <span class="ty">abap.clnt</span> <span class="op">not null</span>;
+  <span class="kw">key</span> <span class="fd">item_uuid</span> : <span class="ty">sysuuid_x16</span> <span class="op">not null</span>;
+      <span class="fd">order_uuid</span> : <span class="ty">sysuuid_x16</span> <span class="op">not null</span>;   <span class="cm">"FK → Header</span>
+      <span class="fd">item_id</span>   : <span class="ty">abap.numc(6)</span>;
+      <span class="fd">material</span>  : <span class="ty">abap.char(18)</span>;
+      <span class="fd">quantity</span>  : <span class="ty">abap.quan(13,3)</span>;
+      <span class="fd">unit</span>      : <span class="ty">abap.unit(3)</span>;
+      <span class="fd">local_last_changed_at</span> : <span class="ty">abp_locinst_lastchange_tstmpl</span>;
+}</pre>
+    </div>
+
+    <!-- ══ DB SCHL ══ -->
+    <div id="s-db-schl" class="section">
+      <div class="section-title"><span>ZSALES_ORDER_SCHL</span> — Tabla Schedule Line</div>
+      <div class="section-desc">// Nivel 3 · Grandchild Entity · FK → item_uuid</div>
+      <div class="code-header">
+        <span class="code-lang">ABAP CDS</span>
+        <span class="code-file">ZSALES_ORDER_SCHL.dbtab</span>
+      </div>
+<pre><span class="an">@EndUserText.label:</span> <span class="st">'Sales Order Schedule Line'</span>
+<span class="kw">define table</span> <span class="fd">zsales_order_schl</span> {
+  <span class="kw">key</span> <span class="fd">client</span>    : <span class="ty">abap.clnt</span> <span class="op">not null</span>;
+  <span class="kw">key</span> <span class="fd">schl_uuid</span> : <span class="ty">sysuuid_x16</span> <span class="op">not null</span>;
+      <span class="fd">item_uuid</span>  : <span class="ty">sysuuid_x16</span> <span class="op">not null</span>;   <span class="cm">"FK → Item</span>
+      <span class="fd">schl_id</span>        : <span class="ty">abap.numc(4)</span>;
+      <span class="fd">delivery_date</span>  : <span class="ty">abap.dats</span>;
+      <span class="fd">confirmed_qty</span>  : <span class="ty">abap.quan(13,3)</span>;
+      <span class="fd">local_last_changed_at</span> : <span class="ty">abp_locinst_lastchange_tstmpl</span>;
+}</pre>
+    </div>
+
+    <!-- ══ CDS I HEADER ══ -->
+    <div id="s-cds-i-header" class="section">
+      <div class="section-title"><span>ZI_SALESORDER</span> — Interface View Root</div>
+      <div class="section-desc">// define root view entity · composition [0..*] of ZI_SALESORDER_ITEM</div>
+      <div class="code-header">
+        <span class="code-lang">CDS View</span>
+        <span class="code-file">ZI_SALESORDER.ddls</span>
+      </div>
+<pre><span class="an">@AccessControl.authorizationCheck: #NOT_REQUIRED</span>
+<span class="kw">define root view entity</span> <span class="fd">ZI_SALESORDER</span>
+  <span class="kw">as select from</span> zsales_order
+  <span class="op">composition</span> [0..*] <span class="kw">of</span> <span class="fd">ZI_SALESORDER_ITEM</span> <span class="kw">as</span> _Item
+{
+  <span class="kw">key</span> order_uuid            <span class="kw">as</span> <span class="fd">OrderUUID</span>,
+      order_id              <span class="kw">as</span> <span class="fd">OrderID</span>,
+      customer              <span class="kw">as</span> <span class="fd">Customer</span>,
+      order_date            <span class="kw">as</span> <span class="fd">OrderDate</span>,
+      status                <span class="kw">as</span> <span class="fd">Status</span>,
+      created_by            <span class="kw">as</span> <span class="fd">CreatedBy</span>,
+      created_at            <span class="kw">as</span> <span class="fd">CreatedAt</span>,
+      last_changed_by       <span class="kw">as</span> <span class="fd">LastChangedBy</span>,
+      last_changed_at       <span class="kw">as</span> <span class="fd">LastChangedAt</span>,
+      local_last_changed_at <span class="kw">as</span> <span class="fd">LocalLastChangedAt</span>,
+      _Item   <span class="cm">-- asociación expuesta</span>
+}</pre>
+    </div>
+
+    <!-- ══ CDS I ITEM ══ -->
+    <div id="s-cds-i-item" class="section">
+      <div class="section-title"><span>ZI_SALESORDER_ITEM</span> — Interface View Ítem</div>
+      <div class="section-desc">// association to parent · composition [0..*] of ZI_SALESORDER_SCHL</div>
+      <div class="code-header">
+        <span class="code-lang">CDS View</span>
+        <span class="code-file">ZI_SALESORDER_ITEM.ddls</span>
+      </div>
+<pre><span class="an">@AccessControl.authorizationCheck: #NOT_REQUIRED</span>
+<span class="kw">define view entity</span> <span class="fd">ZI_SALESORDER_ITEM</span>
+  <span class="kw">as select from</span> zsales_order_item
+  <span class="op">association to parent</span> <span class="fd">ZI_SALESORDER</span> <span class="kw">as</span> _Order
+    <span class="kw">on</span> $projection.OrderUUID = _Order.OrderUUID
+  <span class="op">composition</span> [0..*] <span class="kw">of</span> <span class="fd">ZI_SALESORDER_SCHL</span> <span class="kw">as</span> _ScheduleLine
+{
+  <span class="kw">key</span> item_uuid             <span class="kw">as</span> <span class="fd">ItemUUID</span>,
+      order_uuid            <span class="kw">as</span> <span class="fd">OrderUUID</span>,
+      item_id               <span class="kw">as</span> <span class="fd">ItemID</span>,
+      material              <span class="kw">as</span> <span class="fd">Material</span>,
+      quantity              <span class="kw">as</span> <span class="fd">Quantity</span>,
+      unit                  <span class="kw">as</span> <span class="fd">Unit</span>,
+      local_last_changed_at <span class="kw">as</span> <span class="fd">LocalLastChangedAt</span>,
+      _Order,
+      _ScheduleLine
+}</pre>
+    </div>
+
+    <!-- ══ CDS I SCHL ══ -->
+    <div id="s-cds-i-schl" class="section">
+      <div class="section-title"><span>ZI_SALESORDER_SCHL</span> — Interface View Schedule Line</div>
+      <div class="section-desc">// Nodo hoja · association to parent ZI_SALESORDER_ITEM</div>
+      <div class="code-header">
+        <span class="code-lang">CDS View</span>
+        <span class="code-file">ZI_SALESORDER_SCHL.ddls</span>
+      </div>
+<pre><span class="an">@AccessControl.authorizationCheck: #NOT_REQUIRED</span>
+<span class="kw">define view entity</span> <span class="fd">ZI_SALESORDER_SCHL</span>
+  <span class="kw">as select from</span> zsales_order_schl
+  <span class="op">association to parent</span> <span class="fd">ZI_SALESORDER_ITEM</span> <span class="kw">as</span> _Item
+    <span class="kw">on</span> $projection.ItemUUID = _Item.ItemUUID
+{
+  <span class="kw">key</span> schl_uuid             <span class="kw">as</span> <span class="fd">SchlUUID</span>,
+      item_uuid             <span class="kw">as</span> <span class="fd">ItemUUID</span>,
+      schl_id               <span class="kw">as</span> <span class="fd">SchlID</span>,
+      delivery_date         <span class="kw">as</span> <span class="fd">DeliveryDate</span>,
+      confirmed_qty         <span class="kw">as</span> <span class="fd">ConfirmedQty</span>,
+      local_last_changed_at <span class="kw">as</span> <span class="fd">LocalLastChangedAt</span>,
+      _Item
+}</pre>
+    </div>
+
+    <!-- ══ CDS C HEADER ══ -->
+    <div id="s-cds-c-header" class="section">
+      <div class="section-title"><span>ZC_SALESORDER</span> — Consumption View Root</div>
+      <div class="section-desc">// provider contract transactional_query · redirected to composition child</div>
+      <div class="code-header">
+        <span class="code-lang">CDS Projection</span>
+        <span class="code-file">ZC_SALESORDER.ddls</span>
+      </div>
+<pre><span class="an">@Metadata.allowExtensions: true</span>
+<span class="an">@EndUserText.label:</span> <span class="st">'Sales Order - Projection'</span>
+<span class="kw">define root view entity</span> <span class="fd">ZC_SALESORDER</span>
+  <span class="op">provider contract</span> transactional_query
+  <span class="kw">as projection on</span> <span class="fd">ZI_SALESORDER</span>
+{
+  <span class="kw">key</span> OrderUUID,
+      OrderID,
+      Customer,
+      OrderDate,
+      Status,
+      CreatedBy,
+      CreatedAt,
+      LastChangedBy,
+      LastChangedAt,
+      LocalLastChangedAt,
+      _Item : <span class="op">redirected to composition child</span> <span class="fd">ZC_SALESORDER_ITEM</span>
+}</pre>
+    </div>
+
+    <!-- ══ CDS C ITEM ══ -->
+    <div id="s-cds-c-item" class="section">
+      <div class="section-title"><span>ZC_SALESORDER_ITEM</span> — Consumption View Ítem</div>
+      <div class="section-desc">// redirected to parent · redirected to composition child</div>
+      <div class="code-header">
+        <span class="code-lang">CDS Projection</span>
+        <span class="code-file">ZC_SALESORDER_ITEM.ddls</span>
+      </div>
+<pre><span class="an">@Metadata.allowExtensions: true</span>
+<span class="an">@EndUserText.label:</span> <span class="st">'Sales Order Item - Projection'</span>
+<span class="kw">define view entity</span> <span class="fd">ZC_SALESORDER_ITEM</span>
+  <span class="kw">as projection on</span> <span class="fd">ZI_SALESORDER_ITEM</span>
+{
+  <span class="kw">key</span> ItemUUID,
+      OrderUUID,
+      ItemID,
+      Material,
+      Quantity,
+      Unit,
+      LocalLastChangedAt,
+      _Order         : <span class="op">redirected to parent</span> <span class="fd">ZC_SALESORDER</span>,
+      _ScheduleLine  : <span class="op">redirected to composition child</span> <span class="fd">ZC_SALESORDER_SCHL</span>
+}</pre>
+    </div>
+
+    <!-- ══ CDS C SCHL ══ -->
+    <div id="s-cds-c-schl" class="section">
+      <div class="section-title"><span>ZC_SALESORDER_SCHL</span> — Consumption View Schedule Line</div>
+      <div class="section-desc">// Nodo hoja de la proyección</div>
+      <div class="code-header">
+        <span class="code-lang">CDS Projection</span>
+        <span class="code-file">ZC_SALESORDER_SCHL.ddls</span>
+      </div>
+<pre><span class="an">@Metadata.allowExtensions: true</span>
+<span class="an">@EndUserText.label:</span> <span class="st">'Schedule Line - Projection'</span>
+<span class="kw">define view entity</span> <span class="fd">ZC_SALESORDER_SCHL</span>
+  <span class="kw">as projection on</span> <span class="fd">ZI_SALESORDER_SCHL</span>
+{
+  <span class="kw">key</span> SchlUUID,
+      ItemUUID,
+      SchlID,
+      DeliveryDate,
+      ConfirmedQty,
+      LocalLastChangedAt,
+      _Item : <span class="op">redirected to parent</span> <span class="fd">ZC_SALESORDER_ITEM</span>
+}</pre>
+    </div>
+
+    <!-- ══ BDEF BASE ══ -->
+    <div id="s-bdef-base" class="section">
+      <div class="section-title"><span>ZI_SALESORDER</span> — Behavior Definition (Base)</div>
+      <div class="section-desc">// managed · lock master / dependent · authorization · mapping</div>
+      <div class="code-header">
+        <span class="code-lang">BDEF</span>
+        <span class="code-file">ZI_SALESORDER.bdef</span>
+      </div>
+<pre><span class="kw">managed</span> implementation <span class="kw">in class</span> <span class="fd">ZBP_I_SALESORDER</span> unique;
+strict ( 2 );
+
+<span class="kw">define behavior for</span> <span class="fd">ZI_SALESORDER</span> alias SalesOrder
+persistent table zsales_order
+<span class="op">lock master</span>
+<span class="op">authorization master</span> ( instance )
+<span class="op">etag master</span> LocalLastChangedAt
+{
+  field ( <span class="op">readonly</span> ) OrderUUID, CreatedBy, CreatedAt, LastChangedBy, LastChangedAt;
+  field ( <span class="op">numbering : managed</span> ) OrderUUID;
+
+  create; update; delete;
+  action confirmOrder result [1] $self;
+  association _Item { create; }
+
+  mapping <span class="kw">for</span> zsales_order {
+    OrderUUID  = order_uuid;
+    OrderID    = order_id;
+    Customer   = customer;
+    OrderDate  = order_date;
+    Status     = status;
+  }
+}
+
+<span class="kw">define behavior for</span> <span class="fd">ZI_SALESORDER_ITEM</span> alias SalesOrderItem
+persistent table zsales_order_item
+<span class="op">lock dependent by</span> _Order
+<span class="op">authorization dependent by</span> _Order
+<span class="op">etag master</span> LocalLastChangedAt
+{
+  field ( <span class="op">readonly</span> )  ItemUUID;
+  field ( <span class="op">mandatory</span> ) Material, Quantity;
+  field ( <span class="op">numbering : managed</span> ) ItemUUID;
+
+  update; delete;
+  association _ScheduleLine { create; }
+
+  mapping <span class="kw">for</span> zsales_order_item {
+    ItemUUID  = item_uuid;
+    OrderUUID = order_uuid;
+    ItemID    = item_id;
+    Material  = material;
+    Quantity  = quantity;
+    Unit      = unit;
+  }
+}
+
+<span class="kw">define behavior for</span> <span class="fd">ZI_SALESORDER_SCHL</span> alias ScheduleLine
+persistent table zsales_order_schl
+<span class="op">lock dependent by</span> _Order
+<span class="op">authorization dependent by</span> _Order
+<span class="op">etag master</span> LocalLastChangedAt
+{
+  field ( <span class="op">readonly</span> )  SchlUUID;
+  field ( <span class="op">mandatory</span> ) DeliveryDate, ConfirmedQty;
+  field ( <span class="op">numbering : managed</span> ) SchlUUID;
+
+  update; delete;
+
+  mapping <span class="kw">for</span> zsales_order_schl {
+    SchlUUID     = schl_uuid;
+    ItemUUID     = item_uuid;
+    SchlID       = schl_id;
+    DeliveryDate = delivery_date;
+    ConfirmedQty = confirmed_qty;
+  }
+}</pre>
+    </div>
+
+    <!-- ══ BDEF PROJ ══ -->
+    <div id="s-bdef-proj" class="section">
+      <div class="section-title"><span>ZC_SALESORDER</span> — Behavior Definition (Projection)</div>
+      <div class="section-desc">// projection · use create / update / delete / action / association</div>
+      <div class="code-header">
+        <span class="code-lang">BDEF</span>
+        <span class="code-file">ZC_SALESORDER.bdef</span>
+      </div>
+<pre><span class="kw">projection</span>;
+strict ( 2 );
+
+<span class="kw">define behavior for</span> <span class="fd">ZC_SALESORDER</span> alias SalesOrder
+{
+  <span class="op">use</span> create;
+  <span class="op">use</span> update;
+  <span class="op">use</span> delete;
+  <span class="op">use</span> action confirmOrder;
+  <span class="op">use</span> association _Item { create; }
+}
+
+<span class="kw">define behavior for</span> <span class="fd">ZC_SALESORDER_ITEM</span> alias SalesOrderItem
+{
+  <span class="op">use</span> update;
+  <span class="op">use</span> delete;
+  <span class="op">use</span> association _ScheduleLine { create; }
+}
+
+<span class="kw">define behavior for</span> <span class="fd">ZC_SALESORDER_SCHL</span> alias ScheduleLine
+{
+  <span class="op">use</span> update;
+  <span class="op">use</span> delete;
+}</pre>
+    </div>
+
+    <!-- ══ BEHAVIOR POOL ══ -->
+    <div id="s-bpool" class="section">
+      <div class="section-title"><span>ZBP_I_SALESORDER</span> — Behavior Pool</div>
+      <div class="section-desc">// Handler Class · confirmOrder action · validateCustomer validation</div>
+      <div class="code-header">
+        <span class="code-lang">ABAP</span>
+        <span class="code-file">ZBP_I_SALESORDER.clas.abap</span>
+      </div>
+<pre><span class="kw">CLASS</span> zbp_i_salesorder <span class="kw">DEFINITION PUBLIC ABSTRACT FINAL</span>
+  <span class="kw">FOR BEHAVIOR OF</span> zi_salesorder.
+<span class="kw">ENDCLASS</span>.
+<span class="kw">CLASS</span> zbp_i_salesorder <span class="kw">IMPLEMENTATION</span>.
+<span class="kw">ENDCLASS</span>.
+
+<span class="cm">"--- Handler Class ---</span>
+<span class="kw">CLASS</span> lhc_salesorder <span class="kw">DEFINITION INHERITING FROM</span> cl_abap_behavior_handler.
+  <span class="kw">PRIVATE SECTION</span>.
+    <span class="kw">METHODS</span>:
+      confirmOrder <span class="kw">FOR MODIFY</span>
+        <span class="kw">IMPORTING</span> keys <span class="kw">FOR ACTION</span> salesorder~confirmOrder <span class="kw">RESULT</span> result,
+      validateCustomer <span class="kw">FOR VALIDATE ON SAVE</span>
+        <span class="kw">IMPORTING</span> keys <span class="kw">FOR</span> salesorder~validateCustomer.
+<span class="kw">ENDCLASS</span>.
+
+<span class="kw">CLASS</span> lhc_salesorder <span class="kw">IMPLEMENTATION</span>.
+
+  <span class="kw">METHOD</span> confirmOrder.
+    <span class="kw">MODIFY ENTITIES OF</span> zi_salesorder <span class="kw">IN LOCAL MODE</span>
+      <span class="kw">ENTITY</span> salesorder
+        <span class="kw">UPDATE FIELDS</span> ( Status )
+        <span class="kw">WITH VALUE</span> #( <span class="kw">FOR</span> key <span class="kw">IN</span> keys
+                        ( %tky   = key-%tky
+                          Status = <span class="st">'CO'</span> ) ).
+    <span class="kw">READ ENTITIES OF</span> zi_salesorder <span class="kw">IN LOCAL MODE</span>
+      <span class="kw">ENTITY</span> salesorder <span class="kw">ALL FIELDS WITH</span>
+        <span class="kw">CORRESPONDING</span> #( keys )
+      <span class="kw">RESULT DATA</span>(orders).
+    result = <span class="kw">VALUE</span> #( <span class="kw">FOR</span> order <span class="kw">IN</span> orders
+                        ( %tky   = order-%tky
+                          %param = order ) ).
+  <span class="kw">ENDMETHOD</span>.
+
+  <span class="kw">METHOD</span> validateCustomer.
+    <span class="kw">READ ENTITIES OF</span> zi_salesorder <span class="kw">IN LOCAL MODE</span>
+      <span class="kw">ENTITY</span> salesorder
+        <span class="kw">FIELDS</span> ( Customer ) <span class="kw">WITH CORRESPONDING</span> #( keys )
+      <span class="kw">RESULT DATA</span>(orders).
+
+    <span class="kw">LOOP AT</span> orders <span class="kw">INTO DATA</span>(order).
+      <span class="kw">IF</span> order-Customer <span class="kw">IS INITIAL</span>.
+        <span class="kw">APPEND VALUE</span> #(
+          %tky = order-%tky
+          %msg = new_message_with_text(
+                   severity = if_abap_behv_message=>severity-error
+                   text     = <span class="st">'Customer is mandatory'</span> )
+        ) <span class="kw">TO</span> reported-salesorder.
+      <span class="kw">ENDIF</span>.
+    <span class="kw">ENDLOOP</span>.
+  <span class="kw">ENDMETHOD</span>.
+
+<span class="kw">ENDCLASS</span>.</pre>
+    </div>
+
+    <!-- ══ SERVICE ══ -->
+    <div id="s-service" class="section">
+      <div class="section-title"><span>ZUI_SALESORDER_O4</span> — Service Definition</div>
+      <div class="section-desc">// OData V4 · expose Consumption Views · activar Service Binding en ADT</div>
+      <div class="code-header">
+        <span class="code-lang">SRVD</span>
+        <span class="code-file">ZUI_SALESORDER_O4.srvd</span>
+      </div>
+<pre><span class="an">@EndUserText.label:</span> <span class="st">'Sales Order Service'</span>
+<span class="kw">define service</span> <span class="fd">ZUI_SALESORDER_O4</span> {
+  <span class="op">expose</span> <span class="fd">ZC_SALESORDER</span>      <span class="kw">as</span> SalesOrder;
+  <span class="op">expose</span> <span class="fd">ZC_SALESORDER_ITEM</span> <span class="kw">as</span> SalesOrderItem;
+  <span class="op">expose</span> <span class="fd">ZC_SALESORDER_SCHL</span> <span class="kw">as</span> ScheduleLine;
+}</pre>
+
+      <div class="card-grid" style="margin-top: 8px;">
+        <div class="card">
+          <div class="card-icon">🔗</div>
+          <div class="card-title">Service Binding</div>
+          <div class="card-body">Crear en ADT como <code>OData V4 - UI</code>, asociar a la Service Definition y pulsar <b>Activate</b> para obtener el endpoint.</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">🧪</div>
+          <div class="card-title">Preview</div>
+          <div class="card-body">Desde la Service Binding se puede lanzar directamente el <b>Fiori Elements Preview</b> para probar el BO en el browser.</div>
+        </div>
+        <div class="card">
+          <div class="card-icon">📡</div>
+          <div class="card-title">Endpoint OData</div>
+          <div class="card-body">El endpoint queda disponible en <code>/sap/opu/odata4/...</code> y puede consumirse desde Fiori, BTP o clientes externos.</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<script>
+  const breadcrumbs = {
+    'overview':     'Arquitectura',
+    'db-header':    'ZSALES_ORDER',
+    'db-item':      'ZSALES_ORDER_ITEM',
+    'db-schl':      'ZSALES_ORDER_SCHL',
+    'cds-i-header': 'ZI_SALESORDER',
+    'cds-i-item':   'ZI_SALESORDER_ITEM',
+    'cds-i-schl':   'ZI_SALESORDER_SCHL',
+    'cds-c-header': 'ZC_SALESORDER',
+    'cds-c-item':   'ZC_SALESORDER_ITEM',
+    'cds-c-schl':   'ZC_SALESORDER_SCHL',
+    'bdef-base':    'BDEF Base',
+    'bdef-proj':    'BDEF Projection',
+    'bpool':        'Behavior Pool',
+    'service':      'Service Definition',
+  };
+
+  function show(id, el) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('visible'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById('s-' + id).classList.add('visible');
+    el.classList.add('active');
+    document.getElementById('bc-text').textContent = breadcrumbs[id] || id;
+    document.getElementById('content').scrollTop = 0;
+  }
+</script>
+</body>
+</html>
